@@ -23,7 +23,9 @@ import (
 
 	"github.com/aliyun/aliyun-odps-go-sdk/odps"
 	"github.com/aliyun/aliyun-odps-go-sdk/odps/account"
+	"github.com/aliyun/aliyun-odps-go-sdk/odps/options"
 	"github.com/dingxin-tech/mc-cli/common"
+	"github.com/dingxin-tech/mc-cli/utils"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -47,13 +49,28 @@ var queryCmd = &cobra.Command{
 
 		hints := map[string]string{
 			"odps.sql.select.output.format": "HumanReadable",
-			"odps.sql.submit.mode":          "script",
 		}
-		ins, err := odpsIns.ExecSQl(sql, hints)
+		parseResult := utils.Parse(sql)
+
+		for key := range parseResult.Settings {
+			hints[key] = parseResult.Settings[key]
+		}
+
+		taskOptions := options.NewSQLTaskOptions(
+			options.WithHints(hints),
+		)
+		if viper.GetBool(common.InteractiveMode) {
+			taskOptions.InstanceOption = options.NewCreateInstanceOptions()
+
+			taskOptions.InstanceOption.MaxQAOptions.UseMaxQA = true
+			taskOptions.InstanceOption.MaxQAOptions.QuotaName = viper.GetString(common.QuotaName)
+		}
+		ins, err := odpsIns.ExecSQlWithOption(parseResult.RemainingQuery, taskOptions)
 		if err != nil {
 			fmt.Printf("Submit SQL Error: %v\n", err)
 			return
 		}
+		fmt.Println("ID =", ins.Id())
 
 		// 启动 goroutine 获取 logView
 		var wg sync.WaitGroup
@@ -62,7 +79,7 @@ var queryCmd = &cobra.Command{
 			defer wg.Done()
 			logView, err := odpsIns.LogView().GenerateLogView(ins, 72)
 			if err == nil {
-				fmt.Println("Logview:\n", logView)
+				fmt.Println("Log view:\n", logView)
 			} else {
 				fmt.Printf("Generate LogView Error: %v\n", err)
 			}
@@ -80,7 +97,7 @@ var queryCmd = &cobra.Command{
 		}
 		fmt.Printf("\nResult:\n")
 		for _, res := range result {
-			fmt.Printf(res.Content())
+			fmt.Println(res.Content())
 		}
 		wg.Wait()
 	},
@@ -103,5 +120,6 @@ func getOdpsIns() *odps.Odps {
 	aliyunAccount := account.NewAliyunAccount(viper.GetString(common.AccessId), viper.GetString(common.AccessKey))
 	odpsIns := odps.NewOdps(aliyunAccount, viper.GetString(common.Endpoint))
 	odpsIns.SetDefaultProjectName(viper.GetString(common.ProjectName))
+	odpsIns.SetUserAgent("mc-cli")
 	return odpsIns
 }

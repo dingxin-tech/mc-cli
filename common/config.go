@@ -20,3 +20,7 @@ const AccessId = "access_id"
 const ProjectName = "project_name"
 const AccessKey = "access_key"
 const Endpoint = "end_point"
+
+const Schema = "schema"
+const InteractiveMode = "interactive_mode"
+const QuotaName = "quota_name"

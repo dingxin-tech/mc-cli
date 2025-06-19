@@ -3,7 +3,7 @@ module github.com/dingxin-tech/mc-cli
 go 1.23.2
 
 require (
-	github.com/aliyun/aliyun-odps-go-sdk v0.4.1
+	github.com/aliyun/aliyun-odps-go-sdk v0.4.15
 	github.com/spf13/cobra v1.8.1
 	github.com/spf13/viper v1.19.0
 )
